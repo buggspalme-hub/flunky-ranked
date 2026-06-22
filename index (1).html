@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flunky Ranked — Live-Tabelle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0E1512;
+    --surface: #17231D;
+    --line: #2A3A30;
+    --amber: #D9A634;
+    --foam: #F3EFE3;
+    --foam-dim: #B8C4BA;
+    --win: #7FA66B;
+    --loss: #C1573D;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--foam);
+    font-family: "IBM Plex Sans", sans-serif;
+    line-height: 1.5;
+    padding: 0 20px 80px;
+  }
+
+  a { color: var(--amber); }
+
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  /* ---- Hero ---- */
+  header.hero {
+    padding: 56px 0 32px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--foam-dim);
+    margin: 0 0 12px;
+  }
+
+  h1.title {
+    font-family: "Bebas Neue", sans-serif;
+    font-size: clamp(48px, 10vw, 84px);
+    letter-spacing: 0.02em;
+    line-height: 0.95;
+    margin: 0 0 28px;
+    color: var(--foam);
+  }
+
+  h1.title span { color: var(--amber); }
+
+  .leader-card {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+
+  .leader-label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    color: var(--foam-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .leader-name {
+    font-family: "Bebas Neue", sans-serif;
+    font-size: 32px;
+    color: var(--amber);
+  }
+
+  .leader-rating {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--foam);
+  }
+
+  /* ---- Sections ---- */
+  section { padding: 40px 0; border-bottom: 1px solid var(--line); }
+  section:last-of-type { border-bottom: none; }
+
+  h2.section-title {
+    font-family: "Bebas Neue", sans-serif;
+    font-size: 26px;
+    letter-spacing: 0.02em;
+    margin: 0 0 20px;
+    color: var(--foam);
+  }
+
+  /* ---- Leaderboard table ---- */
+  .board { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+
+  .row {
+    display: grid;
+    grid-template-columns: 36px 1fr 110px 90px;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .row:last-child { border-bottom: none; }
+  .row.header {
+    background: transparent;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--foam-dim);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .rank { font-family: "IBM Plex Mono", monospace; color: var(--foam-dim); font-size: 14px; }
+  .rank.top { color: var(--amber); font-weight: 600; }
+
+  .player-name { font-weight: 500; }
+  .player-tier { display: block; font-size: 12px; color: var(--foam-dim); margin-top: 2px; }
+
+  .rating { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 16px; text-align: right; }
+
+  .record { font-family: "IBM Plex Mono", monospace; font-size: 13px; text-align: right; }
+  .record .w { color: var(--win); }
+  .record .l { color: var(--loss); }
+
+  /* ---- H2H ---- */
+  .h2h-controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  select {
+    background: var(--surface);
+    color: var(--foam);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 15px;
+    min-width: 140px;
+  }
+
+  select:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
+
+  .vs-label {
+    font-family: "Bebas Neue", sans-serif;
+    color: var(--foam-dim);
+    font-size: 18px;
+  }
+
+  .h2h-result {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 24px;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .h2h-stat { font-family: "IBM Plex Mono", monospace; font-size: 14px; color: var(--foam-dim); }
+  .h2h-stat strong { display: block; font-size: 24px; color: var(--foam); font-weight: 600; }
+  .h2h-empty { color: var(--foam-dim); font-size: 14px; }
+
+  footer {
+    padding-top: 32px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--foam-dim);
+  }
+
+  .status { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--foam-dim); }
+  .status.error { color: var(--loss); }
+
+  @media (max-width: 480px) {
+    .row { grid-template-columns: 28px 1fr 80px 70px; }
+    .leader-name, .leader-rating { font-size: 24px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">Saison 2026 · Live-Tabelle</p>
+    <h1 class="title">FLUNKY<span>RANKED</span></h1>
+    <div class="leader-card" id="leaderCard">
+      <span class="leader-label">Spitzenreiter</span>
+      <span class="leader-name" id="leaderName">—</span>
+      <span class="leader-rating" id="leaderRating">—</span>
+    </div>
+  </header>
+
+  <section>
+    <h2 class="section-title">Rangliste</h2>
+    <p class="status" id="boardStatus">Lade Live-Daten…</p>
+    <div class="board" id="board" style="display:none;">
+      <div class="row header">
+        <span>#</span>
+        <span>Spieler</span>
+        <span style="text-align:right;">Rating</span>
+        <span style="text-align:right;">S–N</span>
+      </div>
+      <div id="boardRows"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Head-to-Head</h2>
+    <div class="h2h-controls">
+      <select id="h2hA"></select>
+      <span class="vs-label">VS</span>
+      <select id="h2hB"></select>
+    </div>
+    <div class="h2h-result" id="h2hResult">
+      <span class="h2h-empty">Wähle zwei Spieler aus.</span>
+    </div>
+  </section>
+
+  <footer>
+    Daten werden direkt aus dem Google Sheet gelesen. Aktualisiert sich, sobald
+    <code>update_ranking.py</code> erneut läuft und die Seite neu geladen wird.
+  </footer>
+
+</div>
+
+<script>
+  // ---- HIER ANPASSEN: deine Google-Sheets-ID (aus der URL zwischen /d/ und /edit) ----
+  const SHEET_ID = "160fta0W3onci59lJSOqD4Sx6w7jiG3AzWaYIHIF2fMw";
+  const PLAYERS_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Players`;
+  const H2H_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=H2H`;
+  // ------------------------------------------------------------------
+
+  function parseCSV(text) {
+    const rows = [];
+    let row = [], field = "", inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; }
+          else inQuotes = false;
+        } else field += c;
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ",") { row.push(field); field = ""; }
+        else if (c === "\n" || c === "\r") {
+          if (field !== "" || row.length) { row.push(field); rows.push(row); row = []; field = ""; }
+          if (c === "\r" && text[i + 1] === "\n") i++;
+        } else field += c;
+      }
+    }
+    if (field !== "" || row.length) { row.push(field); rows.push(row); }
+    if (rows.length < 2) return [];
+    const headers = rows[0].map(h => h.trim());
+    return rows.slice(1)
+      .filter(r => r.length === headers.length)
+      .map(r => {
+        const obj = {};
+        headers.forEach((h, idx) => obj[h] = (r[idx] || "").trim());
+        return obj;
+      });
+  }
+
+  function tierFor(rating) {
+    if (rating < 900) return "Radler";
+    if (rating < 1000) return "Pils";
+    if (rating < 1100) return "Hefeweizen";
+    if (rating < 1200) return "Hopfenheld";
+    return "Kronkorken-König";
+  }
+
+  async function fetchCSV(url) {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return parseCSV(await res.text());
+  }
+
+  function renderBoard(players) {
+    const sorted = [...players].sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
+    const rowsEl = document.getElementById("boardRows");
+    rowsEl.innerHTML = sorted.map((p, i) => {
+      const rating = parseFloat(p.rating);
+      const spiele = parseInt(p.spiele, 10) || 0;
+      const siege = parseInt(p.siege, 10) || 0;
+      const niederlagen = spiele - siege;
+      return `
+        <div class="row">
+          <span class="rank ${i === 0 ? "top" : ""}">${i + 1}</span>
+          <span>
+            <span class="player-name">${p.name}</span>
+            <span class="player-tier">${tierFor(rating)}</span>
+          </span>
+          <span class="rating">${rating.toFixed(0)}</span>
+          <span class="record"><span class="w">${siege}</span>–<span class="l">${niederlagen}</span></span>
+        </div>
+      `;
+    }).join("");
+
+    if (sorted.length > 0) {
+      document.getElementById("leaderName").textContent = sorted[0].name;
+      document.getElementById("leaderRating").textContent = Math.round(parseFloat(sorted[0].rating));
+    }
+
+    document.getElementById("boardStatus").style.display = "none";
+    document.getElementById("board").style.display = "block";
+
+    return sorted.map(p => p.name);
+  }
+
+  function setupH2H(h2hRows, names) {
+    const selA = document.getElementById("h2hA");
+    const selB = document.getElementById("h2hB");
+    const optionsHTML = names.map(n => `<option value="${n}">${n}</option>`).join("");
+    selA.innerHTML = optionsHTML;
+    selB.innerHTML = optionsHTML;
+    if (names.length > 1) selB.selectedIndex = 1;
+
+    function render() {
+      const a = selA.value, b = selB.value;
+      const resultEl = document.getElementById("h2hResult");
+      if (a === b) {
+        resultEl.innerHTML = `<span class="h2h-empty">Wähle zwei unterschiedliche Spieler.</span>`;
+        return;
+      }
+      const match = h2hRows.find(r => r.spieler === a && r.gegner === b);
+      if (!match || parseInt(match.spiele, 10) === 0) {
+        resultEl.innerHTML = `<span class="h2h-empty">${a} und ${b} sind noch nicht gegeneinander angetreten.</span>`;
+        return;
+      }
+      resultEl.innerHTML = `
+        <div class="h2h-stat">Spiele<strong>${match.spiele}</strong></div>
+        <div class="h2h-stat">${a} Siege<strong style="color:var(--win)">${match.siege}</strong></div>
+        <div class="h2h-stat">${a} Niederlagen<strong style="color:var(--loss)">${match.niederlagen}</strong></div>
+        <div class="h2h-stat">Winrate ${a}<strong>${match.winrate_prozent}%</strong></div>
+      `;
+    }
+
+    selA.addEventListener("change", render);
+    selB.addEventListener("change", render);
+    render();
+  }
+
+  async function init() {
+    try {
+      const [players, h2hRows] = await Promise.all([
+        fetchCSV(PLAYERS_CSV_URL),
+        fetchCSV(H2H_CSV_URL),
+      ]);
+      const names = renderBoard(players);
+      setupH2H(h2hRows, names);
+    } catch (err) {
+      const statusEl = document.getElementById("boardStatus");
+      statusEl.textContent = "Daten konnten nicht geladen werden. Prüf die CSV-Links im Code (PLAYERS_CSV_URL / H2H_CSV_URL).";
+      statusEl.classList.add("error");
+      console.error(err);
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
