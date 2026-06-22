@@ -247,10 +247,7 @@
     </div>
   </section>
 
-  <footer>
-    Daten werden direkt aus dem Google Sheet gelesen. Aktualisiert sich, sobald
-    <code>update_ranking.py</code> erneut läuft und die Seite neu geladen wird.
-  </footer>
+  <footer></footer>
 
 </div>
 
@@ -293,11 +290,12 @@
   }
 
   function tierFor(rating) {
-    if (rating < 900) return "Radler";
-    if (rating < 1000) return "Pils";
-    if (rating < 1100) return "Hefeweizen";
-    if (rating < 1200) return "Hopfenheld";
-    return "Kronkorken-König";
+    if (rating < 900)  return { name: "Bronze",   color: "#B0703B" };
+    if (rating < 1000) return { name: "Silver",   color: "#ACB4B8" };
+    if (rating < 1100) return { name: "Gold",     color: "#D9A634" };
+    if (rating < 1200) return { name: "Platinum", color: "#5FB8AE" };
+    if (rating < 1300) return { name: "Diamond",  color: "#7C93D9" };
+    return { name: "Master", color: "#C77DD9" };
   }
 
   async function fetchCSV(url) {
@@ -319,7 +317,7 @@
           <span class="rank ${i === 0 ? "top" : ""}">${i + 1}</span>
           <span>
             <span class="player-name">${p.name}</span>
-            <span class="player-tier">${tierFor(rating)}</span>
+            <span class="player-tier" style="color:${tierFor(rating).color}">${tierFor(rating).name}</span>
           </span>
           <span class="rating">${rating.toFixed(0)}</span>
           <span class="record"><span class="w">${siege}</span>–<span class="l">${niederlagen}</span></span>
