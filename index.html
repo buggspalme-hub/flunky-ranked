@@ -132,8 +132,65 @@
   .rank { font-family: "IBM Plex Mono", monospace; color: var(--foam-dim); font-size: 14px; }
   .rank.top { color: var(--amber); font-weight: 600; }
 
-  .player-name { font-weight: 500; }
+  .player-name {
+    font-weight: 500;
+    color: var(--foam);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--foam-dim);
+  }
+  .player-name:hover { color: var(--amber); border-bottom-color: var(--amber); }
   .player-tier { display: block; font-size: 12px; color: var(--foam-dim); margin-top: 2px; }
+
+  /* ---- Profil-Ansicht ---- */
+  .back-link {
+    display: inline-block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 13px;
+    color: var(--foam-dim);
+    text-decoration: none;
+    margin-bottom: 24px;
+  }
+  .back-link:hover { color: var(--amber); }
+
+  .profile-header { padding: 24px 0 0; }
+  .profile-name { font-family: "Bebas Neue", sans-serif; font-size: 56px; color: var(--foam); margin: 0; line-height: 1; }
+  .profile-tier { font-family: "IBM Plex Mono", monospace; font-size: 14px; margin-top: 8px; }
+  .profile-stats { display: flex; gap: 32px; margin: 20px 0 0; flex-wrap: wrap; }
+  .profile-stat-label { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--foam-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+  .profile-stat-value { font-family: "IBM Plex Mono", monospace; font-size: 28px; font-weight: 600; color: var(--foam); }
+
+  .match-list { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .match-row {
+    display: grid;
+    grid-template-columns: 70px 1fr 90px;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    font-size: 14px;
+  }
+  .match-row:last-child { border-bottom: none; }
+  .match-date { font-family: "IBM Plex Mono", monospace; color: var(--foam-dim); font-size: 13px; }
+  .match-detail { color: var(--foam-dim); }
+  .match-detail strong { color: var(--foam); font-weight: 500; }
+  .match-result { font-family: "IBM Plex Mono", monospace; font-weight: 600; text-align: right; font-size: 13px; text-transform: uppercase; }
+  .match-result.win { color: var(--win); }
+  .match-result.loss { color: var(--loss); }
+
+  .h2h-mini { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-top: 32px; }
+  .h2h-mini-row {
+    display: grid;
+    grid-template-columns: 1fr 70px 90px;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    font-size: 14px;
+  }
+  .h2h-mini-row:last-child { border-bottom: none; }
+  .h2h-mini-rate { font-family: "IBM Plex Mono", monospace; text-align: right; font-weight: 600; }
 
   .rating { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 16px; text-align: right; }
 
@@ -211,6 +268,7 @@
 <body>
 <div class="wrap">
 
+  <div id="homeView">
   <header class="hero">
     <p class="eyebrow">Saison 2026 · Live-Tabelle</p>
     <h1 class="title">FLUNKY<span>RANKED</span></h1>
@@ -246,6 +304,35 @@
       <span class="h2h-empty">Wähle zwei Spieler aus.</span>
     </div>
   </section>
+  </div>
+
+  <div id="profileView" style="display:none;">
+    <a href="#" class="back-link">← Zurück zur Rangliste</a>
+    <div class="profile-header">
+      <h1 class="profile-name" id="profileName">—</h1>
+      <p class="profile-tier" id="profileTier"></p>
+      <div class="profile-stats">
+        <div>
+          <div class="profile-stat-label">Rating</div>
+          <div class="profile-stat-value" id="profileRating">—</div>
+        </div>
+        <div>
+          <div class="profile-stat-label">Bilanz</div>
+          <div class="profile-stat-value" id="profileRecord">—</div>
+        </div>
+      </div>
+    </div>
+
+    <section>
+      <h2 class="section-title">Match-Verlauf</h2>
+      <div class="match-list" id="matchList"></div>
+    </section>
+
+    <section>
+      <h2 class="section-title">Gegen jeden Gegner</h2>
+      <div class="h2h-mini" id="profileH2H"></div>
+    </section>
+  </div>
 
   <footer></footer>
 
@@ -256,6 +343,7 @@
   const SHEET_ID = "160fta0W3onci59lJSOqD4Sx6w7jiG3AzWaYIHIF2fMw";
   const PLAYERS_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Players`;
   const H2H_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=H2H`;
+  const MATCHES_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Matches`;
   // ------------------------------------------------------------------
 
   function parseCSV(text) {
@@ -316,7 +404,7 @@
         <div class="row">
           <span class="rank ${i === 0 ? "top" : ""}">${i + 1}</span>
           <span>
-            <span class="player-name">${p.name}</span>
+            <a class="player-name" href="#${encodeURIComponent(p.name)}">${p.name}</a>
             <span class="player-tier" style="color:${tierFor(rating).color}">${tierFor(rating).name}</span>
           </span>
           <span class="rating">${rating.toFixed(0)}</span>
@@ -369,17 +457,121 @@
     render();
   }
 
+  function splitTeam(cell) {
+    return String(cell).split(",").map(s => s.trim()).filter(Boolean);
+  }
+
+  function matchesForPlayer(name, matchesRows) {
+    return matchesRows.filter(m => {
+      const t1 = splitTeam(m.team1_spieler);
+      const t2 = splitTeam(m.team2_spieler);
+      return t1.includes(name) || t2.includes(name);
+    });
+  }
+
+  function renderProfile(name) {
+    const player = STATE.players.find(p => p.name === name);
+    if (!player) { showHome(); return; }
+
+    const rating = parseFloat(player.rating);
+    const spiele = parseInt(player.spiele, 10) || 0;
+    const siege = parseInt(player.siege, 10) || 0;
+    const niederlagen = spiele - siege;
+    const tier = tierFor(rating);
+
+    document.getElementById("profileName").textContent = name;
+    document.getElementById("profileTier").innerHTML = `<span style="color:${tier.color}">${tier.name}</span>`;
+    document.getElementById("profileRating").textContent = rating.toFixed(0);
+    document.getElementById("profileRecord").innerHTML =
+      `<span style="color:var(--win)">${siege}</span>–<span style="color:var(--loss)">${niederlagen}</span>`;
+
+    // Match-Verlauf: neueste zuerst (Annahme: Tabellen-Reihenfolge ist chronologisch aufsteigend)
+    const own = matchesForPlayer(name, STATE.matches).reverse();
+    const matchListEl = document.getElementById("matchList");
+    if (own.length === 0) {
+      matchListEl.innerHTML = `<div class="match-row"><span class="match-detail">Noch keine Matches gespielt.</span></div>`;
+    } else {
+      matchListEl.innerHTML = own.map(m => {
+        const t1 = splitTeam(m.team1_spieler);
+        const t2 = splitTeam(m.team2_spieler);
+        const inTeam1 = t1.includes(name);
+        const ownTeam = inTeam1 ? t1 : t2;
+        const oppTeam = inTeam1 ? t2 : t1;
+        const teammates = ownTeam.filter(n => n !== name);
+        const won = (inTeam1 && m.ergebnis.trim() === "team1") || (!inTeam1 && m.ergebnis.trim() === "team2");
+        const teammateText = teammates.length ? ` (mit ${teammates.join(", ")})` : "";
+        return `
+          <div class="match-row">
+            <span class="match-date">${m.datum}</span>
+            <span class="match-detail">vs. <strong>${oppTeam.join(", ")}</strong>${teammateText}</span>
+            <span class="match-result ${won ? "win" : "loss"}">${won ? "Sieg" : "Niederlage"}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Mini-H2H für diesen Spieler
+    const ownH2H = STATE.h2h
+      .filter(r => r.spieler === name)
+      .sort((a, b) => parseFloat(b.winrate_prozent) - parseFloat(a.winrate_prozent));
+    const h2hEl = document.getElementById("profileH2H");
+    if (ownH2H.length === 0) {
+      h2hEl.innerHTML = `<div class="h2h-mini-row"><span class="match-detail">Keine Duelle bisher.</span></div>`;
+    } else {
+      h2hEl.innerHTML = ownH2H.map(r => `
+        <div class="h2h-mini-row">
+          <span>${r.gegner}</span>
+          <span style="color:var(--foam-dim)">${r.siege}–${r.niederlagen}</span>
+          <span class="h2h-mini-rate">${r.winrate_prozent}%</span>
+        </div>
+      `).join("");
+    }
+  }
+
+  function showHome() {
+    document.getElementById("homeView").style.display = "block";
+    document.getElementById("profileView").style.display = "none";
+    window.scrollTo(0, 0);
+  }
+
+  function showProfile(name) {
+    renderProfile(name);
+    document.getElementById("homeView").style.display = "none";
+    document.getElementById("profileView").style.display = "block";
+    window.scrollTo(0, 0);
+  }
+
+  function route() {
+    const hash = decodeURIComponent(location.hash.replace(/^#/, ""));
+    if (hash && STATE.names.includes(hash)) {
+      showProfile(hash);
+    } else {
+      showHome();
+    }
+  }
+
+  const STATE = { players: [], h2h: [], matches: [], names: [] };
+
   async function init() {
     try {
-      const [players, h2hRows] = await Promise.all([
+      const [players, h2hRows, matchesRows] = await Promise.all([
         fetchCSV(PLAYERS_CSV_URL),
         fetchCSV(H2H_CSV_URL),
+        fetchCSV(MATCHES_CSV_URL),
       ]);
+      STATE.players = players;
+      STATE.h2h = h2hRows;
+      STATE.matches = matchesRows;
+
       const names = renderBoard(players);
+      STATE.names = names;
       setupH2H(h2hRows, names);
+
+      window.addEventListener("hashchange", route);
+      route();
     } catch (err) {
       const statusEl = document.getElementById("boardStatus");
-      statusEl.textContent = "Daten konnten nicht geladen werden. Prüf die CSV-Links im Code (PLAYERS_CSV_URL / H2H_CSV_URL).";
+      statusEl.textContent = "Daten konnten nicht geladen werden. Prüf die CSV-Links im Code (PLAYERS_CSV_URL / H2H_CSV_URL / MATCHES_CSV_URL).";
       statusEl.classList.add("error");
       console.error(err);
     }
