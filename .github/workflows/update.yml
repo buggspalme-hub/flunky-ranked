@@ -1,0 +1,21 @@
+name: Update Ranking
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pakete installieren
+        run: pip install gspread google-auth pandas
+      - name: Credentials wiederherstellen
+        run: echo "${{ secrets.GOOGLE_CREDENTIALS_B64 }}" | base64 -d > credentials.json
+      - name: Ranking aktualisieren
+        run: python update_ranking.py
