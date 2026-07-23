@@ -230,7 +230,6 @@
   const H2H_URL      = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=H2H`;
   const MATCHES_URL  = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Matches`;
 
-  const PLACEMENT_GAMES = 5;
   const K = 32;
   const ALPHA = 0.7;
 
@@ -274,9 +273,7 @@
     return parseCSV(await res.text());
   }
 
-  function tierFor(rating, spiele) {
-    if (spiele !== undefined && spiele < PLACEMENT_GAMES)
-      return { name: `Unranked (${spiele}/${PLACEMENT_GAMES})`, color: 'var(--foam-dim)' };
+  function tierFor(rating) {
     if (rating < 950)  return { name: 'Bronze',   color: '#B0703B' };
     if (rating < 1000) return { name: 'Silver',   color: '#ACB4B8' };
     if (rating < 1050) return { name: 'Gold',     color: '#D9A634' };
@@ -340,7 +337,7 @@
       const spiele = parseInt(p.spiele, 10) || 0;
       const siege  = parseInt(p.siege, 10) || 0;
       const nl = spiele - siege;
-      const tier = tierFor(rating, spiele);
+      const tier = tierFor(rating);
       return `<div class="row">
         <span class="rank ${i === 0 ? 'top' : ''}">${i + 1}</span>
         <span>
@@ -446,7 +443,7 @@
     const rating = parseFloat(player.rating);
     const spiele = parseInt(player.spiele, 10) || 0;
     const siege  = parseInt(player.siege, 10) || 0;
-    const tier   = tierFor(rating, spiele);
+    const tier   = tierFor(rating);
 
     document.getElementById('profileName').textContent = name;
     document.getElementById('profileTier').innerHTML = `<span style="color:${tier.color}">${tier.name}</span>`;
