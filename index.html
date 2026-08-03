@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlunkyRanked</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0E1512;
+    --surface: #17231D;
+    --line: #2A3A30;
+    --amber: #D9A634;
+    --foam: #F3EFE3;
+    --foam-dim: #7A9080;
+    --win: #7FA66B;
+    --loss: #C1573D;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--foam);
+    font-family: "IBM Plex Sans", sans-serif;
+    line-height: 1.5;
+    padding: 0 20px 80px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+
+  /* ---- Hero ---- */
+  header.hero { padding: 48px 0 28px; border-bottom: 1px solid var(--line); }
+  .eyebrow { font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--foam-dim); margin-bottom: 10px; }
+  h1.title { font-family: "Bebas Neue", sans-serif; font-size: clamp(52px, 10vw, 88px); letter-spacing: 0.02em; line-height: 0.93; color: var(--foam); }
+  h1.title span { color: var(--amber); }
+  .leader-card { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-top: 24px; }
+  .leader-label { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--foam-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+  .leader-name { font-family: "Bebas Neue", sans-serif; font-size: 30px; color: var(--amber); }
+  .leader-rating { font-family: "IBM Plex Mono", monospace; font-size: 30px; font-weight: 600; }
+
+  /* ---- Sections ---- */
+  section { padding: 36px 0; border-bottom: 1px solid var(--line); }
+  section:last-of-type { border-bottom: none; }
+  h2.section-title { font-family: "Bebas Neue", sans-serif; font-size: 24px; letter-spacing: 0.02em; margin-bottom: 18px; }
+
+  /* ---- Leaderboard ---- */
+  .board { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .row { display: grid; grid-template-columns: 32px 1fr 100px 80px; gap: 10px; align-items: center; padding: 13px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .row:last-child { border-bottom: none; }
+  .row.header { background: transparent; font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--foam-dim); padding-bottom: 8px; }
+  .rank { font-family: "IBM Plex Mono", monospace; color: var(--foam-dim); font-size: 13px; }
+  .rank.top { color: var(--amber); font-weight: 600; }
+  .player-name { font-weight: 500; color: var(--foam); text-decoration: none; border-bottom: 1px dotted var(--foam-dim); }
+  .player-name:hover { color: var(--amber); border-bottom-color: var(--amber); }
+  .player-tier { display: block; font-size: 11px; margin-top: 2px; }
+  .rating-val { font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 15px; text-align: right; }
+  .record { font-family: "IBM Plex Mono", monospace; font-size: 13px; text-align: right; }
+  .record .w { color: var(--win); }
+  .record .l { color: var(--loss); }
+  .threshold-note { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--foam-dim); margin-top: 12px; }
+
+  /* ---- H2H ---- */
+  .h2h-controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+  select { background: var(--surface); color: var(--foam); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-family: "IBM Plex Sans", sans-serif; font-size: 15px; min-width: 130px; }
+  select:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .vs-label { font-family: "Bebas Neue", sans-serif; color: var(--foam-dim); font-size: 18px; }
+  .h2h-result { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; min-height: 60px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .h2h-stat { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--foam-dim); }
+  .h2h-stat strong { display: block; font-size: 22px; color: var(--foam); font-weight: 600; }
+  .h2h-empty { color: var(--foam-dim); font-size: 14px; }
+
+  /* ---- Prediction Ranker ---- */
+  .prediction-box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+  .prediction-teams { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: start; margin-bottom: 16px; }
+  .team-input-label { font-family: "IBM Plex Mono", monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--foam-dim); margin-bottom: 8px; }
+  .player-tag-input { width: 100%; background: var(--bg); color: var(--foam); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-family: "IBM Plex Sans", sans-serif; font-size: 14px; }
+  .player-tag-input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .vs-divider { font-family: "Bebas Neue", sans-serif; font-size: 22px; color: var(--foam-dim); padding-top: 24px; text-align: center; }
+  .predict-btn { width: 100%; background: var(--amber); color: var(--bg); border: none; border-radius: 8px; padding: 12px; font-family: "IBM Plex Sans", sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: 16px; transition: opacity 0.15s; }
+  .predict-btn:hover { opacity: 0.85; }
+  .prediction-result { display: none; }
+  .prediction-result.visible { display: block; }
+  .prediction-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .pred-win-chance { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--foam-dim); }
+  .pred-win-chance strong { font-size: 20px; color: var(--foam); display: block; }
+  .prediction-players { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pred-player-row { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  .pred-player-name { font-weight: 500; font-size: 14px; }
+  .pred-delta { font-family: "IBM Plex Mono", monospace; font-size: 13px; margin-top: 4px; }
+  .pred-delta .if-win { color: var(--win); }
+  .pred-delta .if-loss { color: var(--loss); }
+  .prediction-hint { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--foam-dim); margin-top: 12px; }
+  .autocomplete-list { list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin-top: 4px; overflow: hidden; }
+  .autocomplete-list li { padding: 9px 12px; font-size: 14px; cursor: pointer; }
+  .autocomplete-list li:hover { background: var(--line); color: var(--amber); }
+
+  /* ---- Profile view ---- */
+  .back-link { display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--foam-dim); text-decoration: none; margin: 32px 0 20px; }
+  .back-link:hover { color: var(--amber); }
+  .profile-name { font-family: "Bebas Neue", sans-serif; font-size: 56px; line-height: 1; }
+  .profile-tier-line { font-family: "IBM Plex Mono", monospace; font-size: 13px; margin-top: 8px; }
+  .profile-stats { display: flex; gap: 28px; margin-top: 20px; flex-wrap: wrap; }
+  .pstat-label { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--foam-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+  .pstat-value { font-family: "IBM Plex Mono", monospace; font-size: 26px; font-weight: 600; }
+  .match-list { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .match-row { display: grid; grid-template-columns: 64px 1fr 90px; gap: 10px; align-items: center; padding: 13px 16px; border-bottom: 1px solid var(--line); background: var(--surface); font-size: 14px; }
+  .match-row:last-child { border-bottom: none; }
+  .match-date { font-family: "IBM Plex Mono", monospace; color: var(--foam-dim); font-size: 12px; }
+  .match-detail { color: var(--foam-dim); }
+  .match-detail strong { color: var(--foam); font-weight: 500; }
+  .match-result { font-family: "IBM Plex Mono", monospace; font-weight: 600; text-align: right; font-size: 12px; text-transform: uppercase; }
+  .match-result.win { color: var(--win); }
+  .match-result.loss { color: var(--loss); }
+  .h2h-mini { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .h2h-mini-row { display: grid; grid-template-columns: 1fr 60px 80px; gap: 10px; align-items: center; padding: 11px 16px; border-bottom: 1px solid var(--line); background: var(--surface); font-size: 14px; }
+  .h2h-mini-row:last-child { border-bottom: none; }
+  .h2h-mini-rate { font-family: "IBM Plex Mono", monospace; text-align: right; font-weight: 600; }
+
+  .status { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--foam-dim); }
+  .status.error { color: var(--loss); }
+  footer { padding-top: 28px; }
+
+  @media (max-width: 480px) {
+    .row { grid-template-columns: 26px 1fr 76px 60px; }
+    .prediction-teams { grid-template-columns: 1fr; }
+    .vs-divider { padding-top: 0; }
+    .prediction-players { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="homeView">
+    <header class="hero">
+      <p class="eyebrow">Saison 2026 · Live-Tabelle</p>
+      <h1 class="title">FLUNKY<span>RANKED</span></h1>
+      <div class="leader-card">
+        <span class="leader-label">Spitzenreiter</span>
+        <span class="leader-name" id="leaderName">—</span>
+        <span class="leader-rating" id="leaderRating">—</span>
+      </div>
+    </header>
+
+    <section>
+      <h2 class="section-title">Rangliste</h2>
+      <p class="status" id="boardStatus">Lade Live-Daten…</p>
+      <div class="board" id="board" style="display:none;">
+        <div class="row header">
+          <span>#</span><span>Spieler</span>
+          <span style="text-align:right">Rating</span>
+          <span style="text-align:right">S–N</span>
+        </div>
+        <div id="boardRows"></div>
+      </div>
+      <p class="threshold-note" id="thresholdNote" style="display:none"></p>
+    </section>
+
+    <section>
+      <h2 class="section-title">Head-to-Head</h2>
+      <div class="h2h-controls">
+        <select id="h2hA"></select>
+        <span class="vs-label">VS</span>
+        <select id="h2hB"></select>
+      </div>
+      <div class="h2h-result" id="h2hResult">
+        <span class="h2h-empty">Wähle zwei Spieler aus.</span>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">Match-Vorhersage</h2>
+      <div class="prediction-box">
+        <div class="prediction-teams">
+          <div>
+            <div class="team-input-label">Team 1</div>
+            <input class="player-tag-input" id="predTeam1" placeholder="z.B. Rostislav, Anh" autocomplete="off">
+          </div>
+          <div class="vs-divider">VS</div>
+          <div>
+            <div class="team-input-label">Team 2</div>
+            <input class="player-tag-input" id="predTeam2" placeholder="z.B. Milan, Garry" autocomplete="off">
+          </div>
+        </div>
+        <button class="predict-btn" id="predictBtn">Vorhersage berechnen</button>
+        <div class="prediction-result" id="predictionResult">
+          <div class="prediction-header">
+            <div class="pred-win-chance">
+              Team 1 Gewinnchance
+              <strong id="predChance1">—</strong>
+            </div>
+            <div class="pred-win-chance" style="text-align:right">
+              Team 2 Gewinnchance
+              <strong id="predChance2">—</strong>
+            </div>
+          </div>
+          <div class="prediction-players" id="predPlayers"></div>
+          <p class="prediction-hint">Zahlen zeigen Rating-Änderung bei Sieg / Niederlage.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="profileView" style="display:none">
+    <a href="#" class="back-link">← Zurück zur Rangliste</a>
+    <div>
+      <h1 class="profile-name" id="profileName">—</h1>
+      <p class="profile-tier-line" id="profileTier"></p>
+      <div class="profile-stats">
+        <div><div class="pstat-label">Rating</div><div class="pstat-value" id="profileRating">—</div></div>
+        <div><div class="pstat-label">Bilanz</div><div class="pstat-value" id="profileRecord">—</div></div>
+      </div>
+    </div>
+    <section>
+      <h2 class="section-title">Match-Verlauf</h2>
+      <div class="match-list" id="matchList"></div>
+    </section>
+    <section>
+      <h2 class="section-title">Gegen jeden Gegner</h2>
+      <div class="h2h-mini" id="profileH2H"></div>
+    </section>
+  </div>
+
+  <footer></footer>
+</div>
+
+<script>
+  const SHEET_ID     = "160fta0W3onci59lJSOqD4Sx6w7jiG3AzWaYIHIF2fMw";
+  const PLAYERS_URL  = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Players`;
+  const H2H_URL      = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=H2H`;
+  const MATCHES_URL  = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Matches`;
+
+  const K = 32;
+  const ALPHA = 0.7;
+
+  // Dynamische Aktivitätsschwelle: ab N Spielern werden alle mit < M Spielen ausgeblendet
+  function minGamesThreshold(totalPlayers) {
+    if (totalPlayers >= 40) return 2;
+    if (totalPlayers >= 30) return 1;
+    return 0;
+  }
+
+  function parseCSV(text) {
+    const rows = [];
+    let row = [], field = "", inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') { if (text[i+1] === '"') { field += '"'; i++; } else inQuotes = false; }
+        else field += c;
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ',') { row.push(field); field = ''; }
+        else if (c === '\n' || c === '\r') {
+          if (field !== '' || row.length) { row.push(field); rows.push(row); row = []; field = ''; }
+          if (c === '\r' && text[i+1] === '\n') i++;
+        } else field += c;
+      }
+    }
+    if (field !== '' || row.length) { row.push(field); rows.push(row); }
+    if (rows.length < 2) return [];
+    const headers = rows[0].map(h => h.trim());
+    return rows.slice(1).filter(r => r.length === headers.length).map(r => {
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = (r[i] || '').trim());
+      return obj;
+    });
+  }
+
+  async function fetchCSV(url) {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return parseCSV(await res.text());
+  }
+
+  function tierFor(rating) {
+    if (rating < 950)  return { name: 'Bronze',   color: '#B0703B' };
+    if (rating < 1000) return { name: 'Silver',   color: '#ACB4B8' };
+    if (rating < 1050) return { name: 'Gold',     color: '#D9A634' };
+    if (rating < 1100) return { name: 'Platinum', color: '#5FB8AE' };
+    if (rating < 1150) return { name: 'Diamond',  color: '#7C93D9' };
+    return { name: 'Master', color: '#C77DD9' };
+  }
+
+  // ---- Elo-Logik (gespiegelt aus elo_engine.py) ----
+  function teamRating(ratings) {
+    const min = Math.min(...ratings);
+    const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+    return ALPHA * min + (1 - ALPHA) * avg;
+  }
+
+  function expectedScore(ra, rb) {
+    return 1 / (1 + Math.pow(10, (rb - ra) / 400));
+  }
+
+  function distributeWeights(ratings) {
+    const maxR = Math.max(...ratings);
+    const raw = ratings.map(r => (maxR - r) + 50);
+    const total = raw.reduce((a, b) => a + b, 0);
+    return raw.map(w => w / total);
+  }
+
+  function predictMatch(team1Names, team2Names, playerRatings) {
+    const r1 = team1Names.map(n => playerRatings[n] || 1000);
+    const r2 = team2Names.map(n => playerRatings[n] || 1000);
+    const tr1 = teamRating(r1);
+    const tr2 = teamRating(r2);
+    const e1 = expectedScore(tr1, tr2);
+    const e2 = 1 - e1;
+    const w1 = distributeWeights(r1);
+    const w2 = distributeWeights(r2);
+
+    const results = {};
+    team1Names.forEach((n, i) => {
+      const deltaWin  = K * (1 - e1) * w1[i] * team1Names.length;
+      const deltaLoss = K * (0 - e1) * w1[i] * team1Names.length;
+      results[n] = { win: deltaWin, loss: deltaLoss };
+    });
+    team2Names.forEach((n, i) => {
+      const deltaWin  = K * (1 - e2) * w2[i] * team2Names.length;
+      const deltaLoss = K * (0 - e2) * w2[i] * team2Names.length;
+      results[n] = { win: deltaWin, loss: deltaLoss };
+    });
+    return { e1, e2, results };
+  }
+
+  // ---- Render Leaderboard ----
+  function renderBoard(players) {
+    const sorted = [...players].sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
+    const total = sorted.length;
+    const minGames = minGamesThreshold(total);
+    const visible = sorted.filter(p => parseInt(p.spiele, 10) >= minGames);
+
+    const rowsEl = document.getElementById('boardRows');
+    rowsEl.innerHTML = visible.map((p, i) => {
+      const rating = parseFloat(p.rating);
+      const spiele = parseInt(p.spiele, 10) || 0;
+      const siege  = parseInt(p.siege, 10) || 0;
+      const nl = spiele - siege;
+      const tier = tierFor(rating);
+      return `<div class="row">
+        <span class="rank ${i === 0 ? 'top' : ''}">${i + 1}</span>
+        <span>
+          <a class="player-name" href="#${encodeURIComponent(p.name)}">${p.name}</a>
+          <span class="player-tier" style="color:${tier.color}">${tier.name}</span>
+        </span>
+        <span class="rating-val">${Math.round(rating)}</span>
+        <span class="record"><span class="w">${siege}</span>–<span class="l">${nl}</span></span>
+      </div>`;
+    }).join('');
+
+    if (sorted.length > 0) {
+      document.getElementById('leaderName').textContent = sorted[0].name;
+      document.getElementById('leaderRating').textContent = Math.round(parseFloat(sorted[0].rating));
+    }
+
+    const noteEl = document.getElementById('thresholdNote');
+    if (minGames > 0) {
+      const hidden = total - visible.length;
+      noteEl.textContent = `${hidden} Spieler mit weniger als ${minGames + 1} Spielen werden ausgeblendet (${total} Spieler gesamt).`;
+      noteEl.style.display = 'block';
+    } else {
+      noteEl.style.display = 'none';
+    }
+
+    document.getElementById('boardStatus').style.display = 'none';
+    document.getElementById('board').style.display = 'block';
+    return sorted.map(p => p.name);
+  }
+
+  // ---- H2H ----
+  function setupH2H(h2hRows, names) {
+    const selA = document.getElementById('h2hA');
+    const selB = document.getElementById('h2hB');
+    const opts = names.map(n => `<option value="${n}">${n}</option>`).join('');
+    selA.innerHTML = opts; selB.innerHTML = opts;
+    if (names.length > 1) selB.selectedIndex = 1;
+
+    function render() {
+      const a = selA.value, b = selB.value;
+      const el = document.getElementById('h2hResult');
+      if (a === b) { el.innerHTML = `<span class="h2h-empty">Wähle zwei unterschiedliche Spieler.</span>`; return; }
+      const match = h2hRows.find(r => r.spieler === a && r.gegner === b);
+      if (!match || parseInt(match.spiele, 10) === 0) {
+        el.innerHTML = `<span class="h2h-empty">${a} und ${b} sind noch nicht gegeneinander angetreten.</span>`; return;
+      }
+      el.innerHTML = `
+        <div class="h2h-stat">Spiele<strong>${match.spiele}</strong></div>
+        <div class="h2h-stat">${a} Siege<strong style="color:var(--win)">${match.siege}</strong></div>
+        <div class="h2h-stat">${a} Niederlagen<strong style="color:var(--loss)">${match.niederlagen}</strong></div>
+        <div class="h2h-stat">Winrate ${a}<strong>${match.winrate_prozent}%</strong></div>`;
+    }
+    selA.addEventListener('change', render);
+    selB.addEventListener('change', render);
+    render();
+  }
+
+  // ---- Prediction Ranker ----
+  function setupPrediction() {
+    document.getElementById('predictBtn').addEventListener('click', () => {
+      const raw1 = document.getElementById('predTeam1').value;
+      const raw2 = document.getElementById('predTeam2').value;
+      const t1 = raw1.split(',').map(s => s.trim()).filter(Boolean);
+      const t2 = raw2.split(',').map(s => s.trim()).filter(Boolean);
+
+      if (t1.length === 0 || t2.length === 0) return;
+
+      // Unbekannte Spieler bekommen 1000
+      const ratingsMap = {};
+      STATE.players.forEach(p => ratingsMap[p.name] = parseFloat(p.rating));
+
+      const { e1, e2, results } = predictMatch(t1, t2, ratingsMap);
+
+      document.getElementById('predChance1').textContent = `${(e1 * 100).toFixed(0)}%`;
+      document.getElementById('predChance2').textContent = `${(e2 * 100).toFixed(0)}%`;
+
+      const allPlayers = [...t1.map(n => ({ n, team: 1 })), ...t2.map(n => ({ n, team: 2 }))];
+      document.getElementById('predPlayers').innerHTML = allPlayers.map(({ n }) => {
+        const d = results[n];
+        const winStr  = d.win  >= 0 ? `+${d.win.toFixed(1)}`  : d.win.toFixed(1);
+        const lossStr = d.loss >= 0 ? `+${d.loss.toFixed(1)}` : d.loss.toFixed(1);
+        const current = ratingsMap[n] ? Math.round(ratingsMap[n]) : '?';
+        return `<div class="pred-player-row">
+          <div class="pred-player-name">${n} <span style="color:var(--foam-dim);font-size:12px">(${current})</span></div>
+          <div class="pred-delta">
+            Sieg: <span class="if-win">${winStr}</span> &nbsp;
+            Niederlage: <span class="if-loss">${lossStr}</span>
+          </div>
+        </div>`;
+      }).join('');
+
+      const resultEl = document.getElementById('predictionResult');
+      resultEl.classList.add('visible');
+    });
+  }
+
+  // ---- Profil ----
+  function splitTeam(cell) { return String(cell).split(',').map(s => s.trim()).filter(Boolean); }
+
+  function renderProfile(name) {
+    const player = STATE.players.find(p => p.name === name);
+    if (!player) { showHome(); return; }
+    const rating = parseFloat(player.rating);
+    const spiele = parseInt(player.spiele, 10) || 0;
+    const siege  = parseInt(player.siege, 10) || 0;
+    const tier   = tierFor(rating);
+
+    document.getElementById('profileName').textContent = name;
+    document.getElementById('profileTier').innerHTML = `<span style="color:${tier.color}">${tier.name}</span>`;
+    document.getElementById('profileRating').textContent = Math.round(rating);
+    document.getElementById('profileRecord').innerHTML =
+      `<span style="color:var(--win)">${siege}</span>–<span style="color:var(--loss)">${spiele - siege}</span>`;
+
+    const own = STATE.matches.filter(m => {
+      const t1 = splitTeam(m.team1_spieler), t2 = splitTeam(m.team2_spieler);
+      return t1.includes(name) || t2.includes(name);
+    }).slice().reverse();
+
+    document.getElementById('matchList').innerHTML = own.length === 0
+      ? `<div class="match-row"><span class="match-detail">Noch keine Matches.</span></div>`
+      : own.map(m => {
+          const t1 = splitTeam(m.team1_spieler), t2 = splitTeam(m.team2_spieler);
+          const inT1 = t1.includes(name);
+          const opp  = inT1 ? t2 : t1;
+          const mates = (inT1 ? t1 : t2).filter(n => n !== name);
+          const won  = (inT1 && m.ergebnis.trim() === 'team1') || (!inT1 && m.ergebnis.trim() === 'team2');
+          const matesText = mates.length ? ` (mit ${mates.join(', ')})` : '';
+          return `<div class="match-row">
+            <span class="match-date">${m.datum}</span>
+            <span class="match-detail">vs. <strong>${opp.join(', ')}</strong>${matesText}</span>
+            <span class="match-result ${won ? 'win' : 'loss'}">${won ? 'Sieg' : 'Niederlage'}</span>
+          </div>`;
+        }).join('');
+
+    const ownH2H = STATE.h2h.filter(r => r.spieler === name)
+      .sort((a, b) => parseFloat(b.winrate_prozent) - parseFloat(a.winrate_prozent));
+    document.getElementById('profileH2H').innerHTML = ownH2H.length === 0
+      ? `<div class="h2h-mini-row"><span class="match-detail">Keine Duelle.</span></div>`
+      : ownH2H.map(r => `<div class="h2h-mini-row">
+          <span>${r.gegner}</span>
+          <span style="color:var(--foam-dim)">${r.siege}–${r.niederlagen}</span>
+          <span class="h2h-mini-rate">${r.winrate_prozent}%</span>
+        </div>`).join('');
+  }
+
+  function showHome() {
+    document.getElementById('homeView').style.display = 'block';
+    document.getElementById('profileView').style.display = 'none';
+    window.scrollTo(0, 0);
+  }
+
+  function showProfile(name) {
+    renderProfile(name);
+    document.getElementById('homeView').style.display = 'none';
+    document.getElementById('profileView').style.display = 'block';
+    window.scrollTo(0, 0);
+  }
+
+  function route() {
+    const hash = decodeURIComponent(location.hash.replace(/^#/, ''));
+    if (hash && STATE.names.includes(hash)) showProfile(hash);
+    else showHome();
+  }
+
+  const STATE = { players: [], h2h: [], matches: [], names: [] };
+
+  async function init() {
+    try {
+      const [players, h2hRows, matchesRows] = await Promise.all([
+        fetchCSV(PLAYERS_URL), fetchCSV(H2H_URL), fetchCSV(MATCHES_URL),
+      ]);
+      STATE.players = players;
+      STATE.h2h = h2hRows;
+      STATE.matches = matchesRows;
+      STATE.names = renderBoard(players);
+      setupH2H(h2hRows, STATE.names);
+      setupPrediction();
+      window.addEventListener('hashchange', route);
+      route();
+    } catch (err) {
+      const el = document.getElementById('boardStatus');
+      el.textContent = 'Daten konnten nicht geladen werden.';
+      el.classList.add('error');
+      console.error(err);
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
