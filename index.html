@@ -116,6 +116,21 @@
   .h2h-mini-row:last-child { border-bottom: none; }
   .h2h-mini-rate { font-family: "IBM Plex Mono", monospace; text-align: right; font-weight: 600; }
 
+  /* ---- Fun Stats ---- */
+  .fun-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 0; }
+  .fun-stat-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  .fun-stat-label { font-family: "IBM Plex Mono", monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--foam-dim); margin-bottom: 6px; }
+  .fun-stat-name { font-weight: 600; font-size: 15px; color: var(--foam); }
+  .fun-stat-sub { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--foam-dim); margin-top: 3px; }
+
+  /* ---- Rating Graph ---- */
+  .rating-graph { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; overflow: hidden; }
+  .rating-graph svg { width: 100%; height: 120px; display: block; }
+
+  @media (max-width: 480px) {
+    .fun-stats { grid-template-columns: 1fr; }
+  }
+
   .status { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--foam-dim); }
   .status.error { color: var(--loss); }
   footer { padding-top: 28px; }
@@ -212,6 +227,16 @@
       </div>
     </div>
     <section>
+      <h2 class="section-title">Fun Stats</h2>
+      <div class="fun-stats" id="funStats"></div>
+    </section>
+
+    <section>
+      <h2 class="section-title">Rating-Verlauf</h2>
+      <div class="rating-graph" id="ratingGraph"></div>
+    </section>
+
+    <section>
       <h2 class="section-title">Match-Verlauf</h2>
       <div class="match-list" id="matchList"></div>
     </section>
@@ -235,8 +260,8 @@
 
   // Dynamische Aktivitätsschwelle: ab N Spielern werden alle mit < M Spielen ausgeblendet
   function minGamesThreshold(totalPlayers) {
-    if (totalPlayers >= 40) return 2;
-    if (totalPlayers >= 30) return 1;
+    if (totalPlayers >= 40) return 3;
+    if (totalPlayers >= 30) return 2;
     return 0;
   }
 
@@ -355,13 +380,7 @@
     }
 
     const noteEl = document.getElementById('thresholdNote');
-    if (minGames > 0) {
-      const hidden = total - visible.length;
-      noteEl.textContent = `${hidden} Spieler mit weniger als ${minGames + 1} Spielen werden ausgeblendet (${total} Spieler gesamt).`;
-      noteEl.style.display = 'block';
-    } else {
-      noteEl.style.display = 'none';
-    }
+    noteEl.style.display = 'none';
 
     document.getElementById('boardStatus').style.display = 'none';
     document.getElementById('board').style.display = 'block';
@@ -434,6 +453,72 @@
     });
   }
 
+  // ---- Rating-Verlauf Replay ----
+  function replayHistory(matchRows, startRating=1000) {
+    const ratings={}, history={};
+    const names=new Set();
+    matchRows.forEach(m=>{ splitTeam(m.team1_spieler).forEach(n=>names.add(n)); splitTeam(m.team2_spieler).forEach(n=>names.add(n)); });
+    names.forEach(n=>{ ratings[n]=startRating; history[n]=[{datum:'Start',rating:startRating}]; });
+    matchRows.forEach(m=>{
+      const t1=splitTeam(m.team1_spieler), t2=splitTeam(m.team2_spieler);
+      const r1=t1.map(n=>ratings[n]||startRating), r2=t2.map(n=>ratings[n]||startRating);
+      const tr1=teamRating(r1), tr2=teamRating(r2);
+      const e1=expectedScore(tr1,tr2), e2=1-e1;
+      const w1=distributeWeights(r1), w2=distributeWeights(r2);
+      const s1=m.ergebnis.trim()==='team1'?1:0;
+      t1.forEach((n,i)=>{ ratings[n]+=K*(s1-e1)*w1[i]*t1.length; });
+      t2.forEach((n,i)=>{ ratings[n]+=K*((1-s1)-e2)*w2[i]*t2.length; });
+      [...t1,...t2].forEach(n=>{ history[n].push({datum:m.datum,rating:Math.round(ratings[n])}); });
+    });
+    return history;
+  }
+
+  // ---- Fun Stats ----
+  function playerFunStats(name, matchRows) {
+    const duoCounts={}, lossesTo={};
+    matchRows.forEach(m=>{
+      const t1=splitTeam(m.team1_spieler), t2=splitTeam(m.team2_spieler);
+      const inT1=t1.includes(name), inT2=t2.includes(name);
+      if (!inT1&&!inT2) return;
+      const ownTeam=inT1?t1:t2, oppTeam=inT1?t2:t1;
+      const won=(inT1&&m.ergebnis.trim()==='team1')||(!inT1&&m.ergebnis.trim()==='team2');
+      ownTeam.filter(n=>n!==name).forEach(mate=>{ duoCounts[mate]=(duoCounts[mate]||0)+1; });
+      if (!won) oppTeam.forEach(opp=>{ lossesTo[opp]=(lossesTo[opp]||0)+1; });
+    });
+    const duoSorted=Object.entries(duoCounts).sort((a,b)=>b[1]-a[1]);
+    const lossSorted=Object.entries(lossesTo).sort((a,b)=>b[1]-a[1]);
+    return {
+      duo: duoSorted.length>0?{name:duoSorted[0][0],games:duoSorted[0][1]}:null,
+      nemesis: lossSorted.length>0?{name:lossSorted[0][0],losses:lossSorted[0][1]}:null,
+    };
+  }
+
+  // ---- Rating-Graph SVG ----
+  function renderGraph(history) {
+    const el=document.getElementById('ratingGraph');
+    if (history.length<2) { el.innerHTML='<p style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--foam-dim);padding:8px">Noch zu wenige Matches für einen Verlauf.</p>'; return; }
+    const W=600, H=120, PAD=8;
+    const ratings=history.map(p=>p.rating);
+    const minR=Math.min(...ratings)-10, maxR=Math.max(...ratings)+10;
+    const xStep=(W-PAD*2)/(history.length-1);
+    const yScale=r=>H-PAD-(r-minR)/(maxR-minR)*(H-PAD*2);
+    const points=history.map((p,i)=>[PAD+i*xStep, yScale(p.rating)]);
+    const pathD='M'+points.map(p=>p.join(',')).join(' L');
+    const areaD=pathD+` L${points[points.length-1][0]},${H} L${PAD},${H} Z`;
+    const startColor='#D9A634', lineColor='#D9A634';
+    el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${startColor}" stop-opacity="0.25"/>
+          <stop offset="100%" stop-color="${startColor}" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path d="${areaD}" fill="url(#grad)"/>
+      <path d="${pathD}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${points.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="${lineColor}"/>`).join('')}
+    </svg>`;
+  }
+
   // ---- Profil ----
   function splitTeam(cell) { return String(cell).split(',').map(s => s.trim()).filter(Boolean); }
 
@@ -450,6 +535,28 @@
     document.getElementById('profileRating').textContent = Math.round(rating);
     document.getElementById('profileRecord').innerHTML =
       `<span style="color:var(--win)">${siege}</span>–<span style="color:var(--loss)">${spiele - siege}</span>`;
+
+    // Fun Stats
+    const stats = playerFunStats(name, STATE.matches);
+    const duoHTML = stats.duo
+      ? `<div class="fun-stat-card">
+          <div class="fun-stat-label">💛 Lieblingsduo</div>
+          <div class="fun-stat-name">${stats.duo.name}</div>
+          <div class="fun-stat-sub">${stats.duo.games}× zusammen gespielt</div>
+        </div>`
+      : `<div class="fun-stat-card"><div class="fun-stat-label">💛 Lieblingsduo</div><div class="fun-stat-name" style="color:var(--foam-dim)">Noch keins</div></div>`;
+    const nemesisHTML = stats.nemesis
+      ? `<div class="fun-stat-card">
+          <div class="fun-stat-label">⚔️ Erzfeind</div>
+          <div class="fun-stat-name">${stats.nemesis.name}</div>
+          <div class="fun-stat-sub">${stats.nemesis.losses}× gegen ihn/sie verloren</div>
+        </div>`
+      : `<div class="fun-stat-card"><div class="fun-stat-label">⚔️ Erzfeind</div><div class="fun-stat-name" style="color:var(--foam-dim)">Noch keiner</div></div>`;
+    document.getElementById('funStats').innerHTML = duoHTML + nemesisHTML;
+
+    // Rating-Verlauf Graph
+    const history = STATE.history[name] || [];
+    renderGraph(history);
 
     const own = STATE.matches.filter(m => {
       const t1 = splitTeam(m.team1_spieler), t2 = splitTeam(m.team2_spieler);
@@ -502,7 +609,7 @@
     else showHome();
   }
 
-  const STATE = { players: [], h2h: [], matches: [], names: [] };
+  const STATE = { players: [], h2h: [], matches: [], names: [], history: {} };
 
   async function init() {
     try {
@@ -512,6 +619,7 @@
       STATE.players = players;
       STATE.h2h = h2hRows;
       STATE.matches = matchesRows;
+      STATE.history = replayHistory(matchesRows);
       STATE.names = renderBoard(players);
       setupH2H(h2hRows, STATE.names);
       setupPrediction();
