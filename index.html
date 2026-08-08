@@ -214,6 +214,22 @@
         </div>
       </div>
     </section>
+
+    <section>
+      <h2 class="section-title">Team-Creator</h2>
+      <div class="prediction-box">
+        <div class="team-input-label">Spieler (kommagetrennt)</div>
+        <input class="player-tag-input" id="teamCreatorInput" placeholder="z.B. Rostislav, Anh, Milan, Garry" autocomplete="off" style="margin-bottom:12px">
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <button class="predict-btn" id="fairTeamBtn" style="margin-bottom:0">⚖️ Faire Teams</button>
+          <button class="predict-btn" id="randomTeamBtn" style="margin-bottom:0;background:var(--line);color:var(--foam)">🎲 Zufällige Teams</button>
+        </div>
+        <div class="prediction-result" id="teamCreatorResult">
+          <div class="prediction-players" id="teamCreatorPlayers"></div>
+          <p class="prediction-hint" id="teamCreatorHint"></p>
+        </div>
+      </div>
+    </section>
   </div>
 
   <div id="profileView" style="display:none">
@@ -414,7 +430,73 @@
     render();
   }
 
-  // ---- Prediction Ranker ----
+  // ---- Team Creator ----
+  function combinations(arr, k) {
+    if (k===0) return [[]];
+    if (arr.length===k) return [[...arr]];
+    const [first,...rest] = arr;
+    return [...combinations(rest,k-1).map(c=>[first,...c]), ...combinations(rest,k)];
+  }
+
+  function fairTeamSplit(players) {
+    const n=players.length, s1=Math.floor(n/2);
+    if (n<=8) {
+      let best=null, bestDelta=Infinity;
+      for (const t1 of combinations(players,s1)) {
+        const t2=players.filter(p=>!t1.includes(p));
+        const delta=Math.abs(teamRating(t1.map(p=>p.r))-teamRating(t2.map(p=>p.r)));
+        if (delta<bestDelta) { bestDelta=delta; best=[t1,t2]; }
+      }
+      return best;
+    }
+    // Snake-Draft für große Gruppen
+    const sorted=[...players].sort((a,b)=>b.r-a.r);
+    const t1=[],t2=[];
+    sorted.forEach((p,i)=>(i%4===0||i%4===3?t1:t2).push(p));
+    return [t1,t2];
+  }
+
+  function randomTeamSplit(players) {
+    const sh=[...players].sort(()=>Math.random()-0.5);
+    const mid=Math.ceil(sh.length/2);
+    return [sh.slice(0,mid), sh.slice(mid)];
+  }
+
+  function renderTeams(t1, t2, mode) {
+    const tr1=teamRating(t1.map(p=>p.r)), tr2=teamRating(t2.map(p=>p.r));
+    const delta=Math.abs(tr1-tr2).toFixed(0);
+    document.getElementById('teamCreatorPlayers').innerHTML = `
+      <div class="pred-player-row">
+        <div class="pred-player-name" style="color:var(--win);margin-bottom:8px">Team 1 <span style="color:var(--foam-dim);font-size:12px">(Stärke: ${Math.round(tr1)})</span></div>
+        ${t1.map(p=>`<div style="padding:4px 0;border-bottom:1px solid var(--line);font-size:14px">${p.n} <span style="color:var(--foam-dim);font-family:IBM Plex Mono,monospace;font-size:12px">${Math.round(p.r)}</span></div>`).join('')}
+      </div>
+      <div class="pred-player-row">
+        <div class="pred-player-name" style="color:var(--amber);margin-bottom:8px">Team 2 <span style="color:var(--foam-dim);font-size:12px">(Stärke: ${Math.round(tr2)})</span></div>
+        ${t2.map(p=>`<div style="padding:4px 0;border-bottom:1px solid var(--line);font-size:14px">${p.n} <span style="color:var(--foam-dim);font-family:IBM Plex Mono,monospace;font-size:12px">${Math.round(p.r)}</span></div>`).join('')}
+      </div>`;
+    document.getElementById('teamCreatorHint').textContent =
+      mode==='fair' ? `Stärkeunterschied: ${delta} Punkte` : 'Teams zufällig erstellt.';
+    document.getElementById('teamCreatorResult').classList.add('visible');
+  }
+
+  function setupTeamCreator() {
+    function getPlayers() {
+      const raw = document.getElementById('teamCreatorInput').value;
+      return raw.split(',').map(s=>s.trim()).filter(Boolean).map(n=>({
+        n, r: (STATE.players.find(p=>p.name===n)||{rating:'1000'}).rating
+      })).map(p=>({...p,r:parseFloat(p.r)}));
+    }
+    document.getElementById('fairTeamBtn').addEventListener('click',()=>{
+      const ps=getPlayers(); if(ps.length<2) return;
+      const [t1,t2]=fairTeamSplit(ps); renderTeams(t1,t2,'fair');
+    });
+    document.getElementById('randomTeamBtn').addEventListener('click',()=>{
+      const ps=getPlayers(); if(ps.length<2) return;
+      const [t1,t2]=randomTeamSplit(ps); renderTeams(t1,t2,'random');
+    });
+  }
+
+  // ---- Prediction ----
   function setupPrediction() {
     document.getElementById('predictBtn').addEventListener('click', () => {
       const raw1 = document.getElementById('predTeam1').value;
@@ -622,6 +704,7 @@
       STATE.history = replayHistory(matchesRows);
       STATE.names = renderBoard(players);
       setupH2H(h2hRows, STATE.names);
+      setupTeamCreator();
       setupPrediction();
       window.addEventListener('hashchange', route);
       route();
